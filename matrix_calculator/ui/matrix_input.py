@@ -16,6 +16,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.parser import parse_expression, matrix_from_strings
+from ui.i18n import i18n
 
 
 class MatrixInputWidget(QWidget):
@@ -42,61 +43,136 @@ class MatrixInputWidget(QWidget):
         main_layout = QVBoxLayout(self)
 
         # Group box
-        group = QGroupBox(self.label_text)
+        self.group = QGroupBox(self.label_text)
         group_layout = QVBoxLayout()
 
         # Dimension controls
         dim_layout = QHBoxLayout()
 
-        rows_label = QLabel("Rows:")
-        rows_label.setStyleSheet("color: #333;")
+        rows_label = QLabel(i18n.t("rows"))
+        rows_label.setStyleSheet("color: #333; font-weight: bold;")
         dim_layout.addWidget(rows_label)
 
-        self.rows_spin = QSpinBox()
-        self.rows_spin.setMinimum(1)
-        self.rows_spin.setMaximum(6)
-        self.rows_spin.setValue(self.default_rows)
-        self.rows_spin.setStyleSheet("""
-            QSpinBox {
-                background-color: #ffffff;
-                color: #333;
-                border: 1px solid #ccc;
+        # Custom rows control with +/- buttons
+        rows_control = QHBoxLayout()
+        rows_minus = QPushButton("-")
+        rows_minus.setStyleSheet("""
+            QPushButton {
+                background-color: #0d6efd;
+                color: white;
+                border: none;
                 border-radius: 4px;
-                padding: 4px;
+                width: 32px;
+                height: 32px;
+                font-size: 18px;
+                font-weight: bold;
             }
-            QSpinBox::up-button, QSpinBox::down-button {
-                background-color: #ddd;
-            }
+            QPushButton:hover { background-color: #0b5ed7; }
+            QPushButton:pressed { background-color: #0a58ca; }
         """)
-        self.rows_spin.valueChanged.connect(self._on_dimension_changed)
-        dim_layout.addWidget(self.rows_spin)
+        rows_minus.clicked.connect(lambda: self._change_rows(-1))
+        rows_control.addWidget(rows_minus)
 
-        cols_label = QLabel("Cols:")
-        cols_label.setStyleSheet("color: #333;")
+        self.rows_value = QLabel(str(self.default_rows))
+        self.rows_value.setStyleSheet("""
+            color: #333;
+            font-weight: bold;
+            font-size: 16px;
+            min-width: 30px;
+            alignment: center;
+        """)
+        rows_control.addWidget(self.rows_value)
+
+        rows_plus = QPushButton("+")
+        rows_plus.setStyleSheet("""
+            QPushButton {
+                background-color: #0d6efd;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                width: 32px;
+                height: 32px;
+                font-size: 18px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: #0b5ed7; }
+            QPushButton:pressed { background-color: #0a58ca; }
+        """)
+        rows_plus.clicked.connect(lambda: self._change_rows(1))
+        rows_control.addWidget(rows_plus)
+        dim_layout.addLayout(rows_control)
+
+        cols_label = QLabel(i18n.t("cols"))
+        cols_label.setStyleSheet("color: #333; font-weight: bold;")
         dim_layout.addWidget(cols_label)
 
-        self.cols_spin = QSpinBox()
-        self.cols_spin.setMinimum(1)
-        self.cols_spin.setMaximum(6)
-        self.cols_spin.setValue(self.default_cols)
-        self.cols_spin.setStyleSheet(self.rows_spin.styleSheet())
-        self.cols_spin.valueChanged.connect(self._on_dimension_changed)
-        dim_layout.addWidget(self.cols_spin)
+        # Custom cols control with +/- buttons
+        cols_control = QHBoxLayout()
+        cols_minus = QPushButton("-")
+        cols_minus.setStyleSheet("""
+            QPushButton {
+                background-color: #0d6efd;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                width: 32px;
+                height: 32px;
+                font-size: 18px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: #0b5ed7; }
+            QPushButton:pressed { background-color: #0a58ca; }
+        """)
+        cols_minus.clicked.connect(lambda: self._change_cols(-1))
+        cols_control.addWidget(cols_minus)
+
+        self.cols_value = QLabel(str(self.default_cols))
+        self.cols_value.setStyleSheet("""
+            color: #333;
+            font-weight: bold;
+            font-size: 16px;
+            min-width: 30px;
+            alignment: center;
+        """)
+        cols_control.addWidget(self.cols_value)
+
+        cols_plus = QPushButton("+")
+        cols_plus.setStyleSheet("""
+            QPushButton {
+                background-color: #0d6efd;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                width: 32px;
+                height: 32px;
+                font-size: 18px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: #0b5ed7; }
+            QPushButton:pressed { background-color: #0a58ca; }
+        """)
+        cols_plus.clicked.connect(lambda: self._change_cols(1))
+        cols_control.addWidget(cols_plus)
+        dim_layout.addLayout(cols_control)
 
         dim_layout.addStretch()
 
         # Clear button
-        clear_btn = QPushButton("Clear")
+        clear_btn = QPushButton(i18n.t("btn_clear") if hasattr(i18n, 't') else "Clear")
         clear_btn.setStyleSheet("""
             QPushButton {
-                background-color: #e0e0e0;
-                color: #333;
+                background-color: #ff4444;
+                color: white;
                 border: none;
-                border-radius: 4px;
-                padding: 6px 16px;
+                border-radius: 6px;
+                padding: 8px 20px;
+                font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #d0d0d0;
+                background-color: #ff2222;
+            }
+            QPushButton:pressed {
+                background-color: #dd0000;
             }
         """)
         clear_btn.clicked.connect(self._clear_matrix)
@@ -136,11 +212,11 @@ class MatrixInputWidget(QWidget):
 
         group_layout.addWidget(self.table)
 
-        group.setLayout(group_layout)
-        main_layout.addWidget(group)
+        self.group.setLayout(group_layout)
+        main_layout.addWidget(self.group)
 
         # Set light theme for group
-        group.setStyleSheet("""
+        self.group.setStyleSheet("""
             QGroupBox {
                 color: #333;
                 border: 1px solid #ddd;
@@ -190,9 +266,25 @@ class MatrixInputWidget(QWidget):
 
     def _on_dimension_changed(self):
         """Handle dimension spinbox changes."""
-        rows = self.rows_spin.value()
-        cols = self.cols_spin.value()
+        rows = int(self.rows_value.text())
+        cols = int(self.cols_value.text())
         self._setup_table(rows, cols)
+        self.matrix_changed.emit(self.get_matrix())
+
+    def _change_rows(self, delta: int):
+        """Change row count by delta."""
+        current = int(self.rows_value.text())
+        new_val = max(1, min(6, current + delta))
+        self.rows_value.setText(str(new_val))
+        self._setup_table(new_val, int(self.cols_value.text()))
+        self.matrix_changed.emit(self.get_matrix())
+
+    def _change_cols(self, delta: int):
+        """Change column count by delta."""
+        current = int(self.cols_value.text())
+        new_val = max(1, min(6, current + delta))
+        self.cols_value.setText(str(new_val))
+        self._setup_table(int(self.rows_value.text()), new_val)
         self.matrix_changed.emit(self.get_matrix())
 
     def _clear_matrix(self):
@@ -200,6 +292,11 @@ class MatrixInputWidget(QWidget):
         for i in range(self.table.rowCount()):
             for j in range(self.table.columnCount()):
                 self.table.item(i, j).setText("")
+
+    def set_label(self, label: str):
+        """Set the group box title."""
+        self.label_text = label
+        self.group.setTitle(label)
 
     def get_matrix(self) -> Matrix:
         """
@@ -300,6 +397,11 @@ class DualMatrixInput(QWidget):
         # Second matrix
         self.matrix_b = MatrixInputWidget(label="Matrix B", default_rows=2, default_cols=2)
         layout.addWidget(self.matrix_b)
+
+    def set_labels(self, label_a: str, label_b: str):
+        """Set labels for both matrices."""
+        self.matrix_a.set_label(label_a)
+        self.matrix_b.set_label(label_b)
 
     def set_operator(self, op: str):
         """Set the operator symbol."""

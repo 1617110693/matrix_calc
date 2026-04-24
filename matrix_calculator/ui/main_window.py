@@ -10,15 +10,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QPushButton, QLabel, QComboBox, QGroupBox, QFormLayout,
-    QTextEdit, QScrollArea, QMessageBox, QApplication, QSizePolicy
+    QTextEdit, QScrollArea, QMessageBox, QApplication, QSizePolicy,
+    QMenuBar, QMenu
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
-from PyQt6.QtGui import QFont
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QObject
+from PyQt6.QtGui import QFont, QAction, QActionGroup
 
 from sympy import Matrix, simplify
 
 from ui.matrix_input import MatrixInputWidget, DualMatrixInput
 from ui.latex_renderer import LatexRenderWidget
+from ui.i18n import i18n
 from core.operations import (
     add, subtract, multiply, transpose, inverse,
     determinant, matrix_rank, trace, char_poly,
@@ -59,7 +61,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Matrix Symbolic Calculator")
+        self.setWindowTitle(i18n.t("app_title"))
         self.setMinimumSize(1200, 800)
 
         # Apply dark theme
@@ -139,6 +141,9 @@ class MainWindow(QMainWindow):
 
     def _init_ui(self):
         """Initialize the user interface."""
+        # Create menu bar
+        self._create_menu_bar()
+
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
@@ -159,34 +164,102 @@ class MainWindow(QMainWindow):
         # Set initial splitter sizes
         splitter.setSizes([600, 600])
 
+        # Connect language change signal
+        i18n.language_changed.connect(self._on_language_changed)
+
+    def _create_menu_bar(self):
+        """Create menu bar with language selection."""
+        menubar = self.menuBar()
+
+        # Language menu
+        lang_menu = QMenu("Language", self)
+        menubar.addMenu(lang_menu)
+
+        action_group = QActionGroup(self)
+        action_group.setExclusive(True)
+
+        self.en_action = QAction("English", self, checkable=True)
+        self.zh_action = QAction("中文", self, checkable=True)
+        self.en_action.setActionGroup(action_group)
+        self.zh_action.setActionGroup(action_group)
+        self.en_action.setChecked(True)
+
+        self.en_action.triggered.connect(lambda: i18n.set_lang("en"))
+        self.zh_action.triggered.connect(lambda: i18n.set_lang("zh"))
+
+        # Set initial checked state
+        if i18n.lang == "zh":
+            self.zh_action.setChecked(True)
+        else:
+            self.en_action.setChecked(True)
+
+        lang_menu.addAction(self.en_action)
+        lang_menu.addAction(self.zh_action)
+
+    def _on_language_changed(self):
+        """Update UI when language changes."""
+        self.setWindowTitle(i18n.t("app_title"))
+        self._update_ui_text()
+
+    def _update_ui_text(self):
+        """Update all UI text elements."""
+        # Update input panel
+        self.title_label.setText(i18n.t("title"))
+        self.mode_label.setText(i18n.t("operation_mode"))
+        self.mode_combo.setItemText(0, i18n.t("mode_single"))
+        self.mode_combo.setItemText(1, i18n.t("mode_dual"))
+        self.mode_combo.setItemText(2, i18n.t("mode_jordan"))
+        self.single_input.set_label(i18n.t("matrix_a"))
+        self.jordan_input.set_label(i18n.t("matrix_a_jordan"))
+        self.dual_input.set_labels(i18n.t("matrix_a"), i18n.t("matrix_b"))
+        self.operations_group.setTitle(i18n.t("operations"))
+
+        # Update buttons
+        self.btn_transpose.setText(i18n.t("btn_transpose"))
+        self.btn_det.setText(i18n.t("btn_det"))
+        self.btn_rank.setText(i18n.t("btn_rank"))
+        self.btn_trace.setText(i18n.t("btn_trace"))
+        self.btn_inverse.setText(i18n.t("btn_inverse"))
+        self.btn_char_poly.setText(i18n.t("btn_char_poly"))
+        self.btn_eigen.setText(i18n.t("btn_eigenvalues"))
+        self.btn_eigen_vec.setText(i18n.t("btn_eigenvectors"))
+        self.btn_jordan.setText(i18n.t("btn_jordan"))
+
+        # Update result panel
+        self.result_title.setText(i18n.t("result"))
+
+        # Update status messages
+        if self.status_label.text() == "Calculating..." or self.status_label.text() == i18n.t("calculating"):
+            self.status_label.setText(i18n.t("calculating"))
+
     def _create_input_panel(self) -> QWidget:
         """Create the left input panel."""
         panel = QWidget()
         layout = QVBoxLayout(panel)
 
         # Title
-        title = QLabel("Matrix Calculator")
-        title.setStyleSheet("""
+        self.title_label = QLabel(i18n.t("title"))
+        self.title_label.setStyleSheet("""
             font-size: 24px;
             font-weight: bold;
             color: #4a9eff;
             padding: 10px;
         """)
-        layout.addWidget(title)
+        layout.addWidget(self.title_label)
 
         # Mode selector
         mode_layout = QHBoxLayout()
-        mode_label = QLabel("Operation Mode:")
-        mode_label.setStyleSheet("font-weight: bold;")
+        self.mode_label = QLabel(i18n.t("operation_mode"))
+        self.mode_label.setStyleSheet("font-weight: bold;")
 
         self.mode_combo = QComboBox()
         self.mode_combo.addItems([
-            "Single Matrix Operations",
-            "Binary Operations (A + B, A * B, etc.)",
-            "Jordan Decomposition"
+            i18n.t("mode_single"),
+            i18n.t("mode_dual"),
+            i18n.t("mode_jordan")
         ])
         self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
-        mode_layout.addWidget(mode_label)
+        mode_layout.addWidget(self.mode_label)
         mode_layout.addWidget(self.mode_combo)
         mode_layout.addStretch()
 
@@ -198,17 +271,18 @@ class MainWindow(QMainWindow):
         stack_layout.setContentsMargins(0, 10, 0, 10)
 
         # Single matrix mode
-        self.single_input = MatrixInputWidget(label="Matrix A", default_rows=2, default_cols=2)
+        self.single_input = MatrixInputWidget(label=i18n.t("matrix_a"), default_rows=2, default_cols=2)
         self.single_input.matrix_changed.connect(self._on_matrix_changed)
         stack_layout.addWidget(self.single_input)
 
         # Dual matrix mode
         self.dual_input = DualMatrixInput()
+        self.dual_input.set_labels(i18n.t("matrix_a"), i18n.t("matrix_b"))
         self.dual_input.hide()
         stack_layout.addWidget(self.dual_input)
 
         # Jordan mode
-        self.jordan_input = MatrixInputWidget(label="Matrix A (for Jordan)", default_rows=2, default_cols=2)
+        self.jordan_input = MatrixInputWidget(label=i18n.t("matrix_a_jordan"), default_rows=2, default_cols=2)
         self.jordan_input.hide()
         stack_layout.addWidget(self.jordan_input)
 
@@ -224,7 +298,7 @@ class MainWindow(QMainWindow):
     def _create_operation_buttons(self, parent_layout: QVBoxLayout):
         """Create operation buttons based on current mode."""
         # Buttons container
-        buttons_group = QGroupBox("Operations")
+        self.operations_group = QGroupBox(i18n.t("operations"))
         buttons_layout = QVBoxLayout()
 
         # Single matrix operations
@@ -232,17 +306,17 @@ class MainWindow(QMainWindow):
         single_ops_layout = QHBoxLayout(self.single_ops_frame)
         single_ops_layout.setContentsMargins(0, 0, 0, 0)
 
-        transpose_btn = self._create_button("A^T", self._on_transpose)
-        det_btn = self._create_button("det(A)", self._on_determinant)
-        rank_btn = self._create_button("rank(A)", self._on_rank)
-        trace_btn = self._create_button("tr(A)", self._on_trace)
-        inverse_btn = self._create_button("A^-1", self._on_inverse)
+        self.btn_transpose = self._create_button(i18n.t("btn_transpose"), self._on_transpose)
+        self.btn_det = self._create_button(i18n.t("btn_det"), self._on_determinant)
+        self.btn_rank = self._create_button(i18n.t("btn_rank"), self._on_rank)
+        self.btn_trace = self._create_button(i18n.t("btn_trace"), self._on_trace)
+        self.btn_inverse = self._create_button(i18n.t("btn_inverse"), self._on_inverse)
 
-        single_ops_layout.addWidget(transpose_btn)
-        single_ops_layout.addWidget(det_btn)
-        single_ops_layout.addWidget(rank_btn)
-        single_ops_layout.addWidget(trace_btn)
-        single_ops_layout.addWidget(inverse_btn)
+        single_ops_layout.addWidget(self.btn_transpose)
+        single_ops_layout.addWidget(self.btn_det)
+        single_ops_layout.addWidget(self.btn_rank)
+        single_ops_layout.addWidget(self.btn_trace)
+        single_ops_layout.addWidget(self.btn_inverse)
 
         buttons_layout.addWidget(self.single_ops_frame)
 
@@ -251,13 +325,13 @@ class MainWindow(QMainWindow):
         eigen_layout = QHBoxLayout(eigen_frame)
         eigen_layout.setContentsMargins(0, 0, 0, 0)
 
-        char_poly_btn = self._create_button("p(λ)", self._on_char_poly)
-        eigen_btn = self._create_button("Eigenvalues", self._on_eigenvalues)
-        eigen_vec_btn = self._create_button("Eigenvectors", self._on_eigenvectors)
+        self.btn_char_poly = self._create_button(i18n.t("btn_char_poly"), self._on_char_poly)
+        self.btn_eigen = self._create_button(i18n.t("btn_eigenvalues"), self._on_eigenvalues)
+        self.btn_eigen_vec = self._create_button(i18n.t("btn_eigenvectors"), self._on_eigenvectors)
 
-        eigen_layout.addWidget(char_poly_btn)
-        eigen_layout.addWidget(eigen_btn)
-        eigen_layout.addWidget(eigen_vec_btn)
+        eigen_layout.addWidget(self.btn_char_poly)
+        eigen_layout.addWidget(self.btn_eigen)
+        eigen_layout.addWidget(self.btn_eigen_vec)
 
         buttons_layout.addWidget(eigen_frame)
 
@@ -283,15 +357,15 @@ class MainWindow(QMainWindow):
         jordan_ops_layout = QHBoxLayout(self.jordan_ops_frame)
         jordan_ops_layout.setContentsMargins(0, 0, 0, 0)
 
-        jordan_btn = self._create_button("Jordan Decomposition", self._on_jordan, accent=True)
-        jordan_btn.setMinimumHeight(45)
+        self.btn_jordan = self._create_button(i18n.t("btn_jordan"), self._on_jordan, accent=True)
+        self.btn_jordan.setMinimumHeight(45)
 
-        jordan_ops_layout.addWidget(jordan_btn)
+        jordan_ops_layout.addWidget(self.btn_jordan)
 
         buttons_layout.addWidget(self.jordan_ops_frame)
 
-        buttons_group.setLayout(buttons_layout)
-        parent_layout.addWidget(buttons_group)
+        self.operations_group.setLayout(buttons_layout)
+        parent_layout.addWidget(self.operations_group)
 
     def _create_button(self, text: str, handler, accent: bool = False) -> QPushButton:
         """Create a styled button."""
@@ -320,14 +394,14 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(panel)
 
         # Title
-        title = QLabel("Result")
-        title.setStyleSheet("""
+        self.result_title = QLabel(i18n.t("result"))
+        self.result_title.setStyleSheet("""
             font-size: 20px;
             font-weight: bold;
             color: #4a9eff;
             padding: 10px;
         """)
-        layout.addWidget(title)
+        layout.addWidget(self.result_title)
 
         # LaTeX renderer
         self.latex_renderer = LatexRenderWidget()
@@ -404,32 +478,37 @@ class MainWindow(QMainWindow):
         """Handle calculation error."""
         self.status_label.setText(f"Error: {error_msg}")
         self.status_label.setStyleSheet("color: #ff6b6b; font-size: 12px; padding: 5px;")
-        QMessageBox.critical(self, "Calculation Error", error_msg)
+        QMessageBox.critical(self, i18n.t("error_calc"), error_msg)
 
     def _on_transpose(self):
         """Handle transpose operation."""
         A = self._get_current_matrix()
-        self._run_calculation(lambda: transpose(A), callback=self._display_single_result)
+        self._run_calculation(lambda: transpose(A),
+                              callback=lambda r: self._display_single_result(r, "A^T"))
 
     def _on_determinant(self):
         """Handle determinant calculation."""
         A = self._get_current_matrix()
-        self._run_calculation(lambda: determinant(A), callback=self._display_scalar_result)
+        self._run_calculation(lambda: determinant(A),
+                              callback=lambda r: self._display_scalar_result(r, "det(A)"))
 
     def _on_rank(self):
         """Handle rank calculation."""
         A = self._get_current_matrix()
-        self._run_calculation(lambda: matrix_rank(A), callback=self._display_scalar_result)
+        self._run_calculation(lambda: matrix_rank(A),
+                              callback=lambda r: self._display_scalar_result(r, "rank(A)"))
 
     def _on_trace(self):
         """Handle trace calculation."""
         A = self._get_current_matrix()
-        self._run_calculation(lambda: trace(A), callback=self._display_scalar_result)
+        self._run_calculation(lambda: trace(A),
+                              callback=lambda r: self._display_scalar_result(r, "tr(A)"))
 
     def _on_inverse(self):
         """Handle inverse operation."""
         A = self._get_current_matrix()
-        self._run_calculation(lambda: inverse(A), callback=self._display_single_result)
+        self._run_calculation(lambda: inverse(A),
+                              callback=lambda r: self._display_single_result(r, "A^{-1}"))
 
     def _on_char_poly(self):
         """Handle characteristic polynomial."""
@@ -470,7 +549,7 @@ class MainWindow(QMainWindow):
         A = self.jordan_input.get_matrix()
 
         if not A.is_square:
-            QMessageBox.warning(self, "Invalid Matrix", "Jordan decomposition requires a square matrix.")
+            QMessageBox.warning(self, i18n.t("error_calc"), i18n.t("error_square"))
             return
 
         def do_jordan():
@@ -480,18 +559,26 @@ class MainWindow(QMainWindow):
 
         self._run_calculation(do_jordan, callback=self._display_jordan_result)
 
-    def _display_single_result(self, result):
+    def _display_single_result(self, result, label: str = None):
         """Display single matrix result."""
         self.status_label.setText("")
         self.status_label.setStyleSheet("color: #aaa; font-size: 12px; padding: 5px;")
-        self.latex_renderer.render_matrix(result, title="Result")
+        from sympy import latex
+        matrix_latex = latex(result, mode='plain')
+        if label:
+            self.latex_renderer.set_latex(matrix_latex, title=f"{label} = ")
+        else:
+            self.latex_renderer.set_latex(matrix_latex)
 
-    def _display_scalar_result(self, result):
+    def _display_scalar_result(self, result, label: str = None):
         """Display scalar result."""
         self.status_label.setText("")
         from sympy import latex
         latex_str = latex(simplify(result))
-        self.latex_renderer.set_latex(latex_str, title="Result")
+        if label:
+            self.latex_renderer.set_latex(latex_str, title=f"{label} = ")
+        else:
+            self.latex_renderer.set_latex(latex_str)
 
     def _display_poly_result(self, result):
         """Display characteristic polynomial."""
@@ -541,8 +628,8 @@ class MainWindow(QMainWindow):
             J, P, P_inv, valid, msg
         )
         if valid:
-            self.status_label.setText("Verification: A = PJP⁻¹  ✓")
+            self.status_label.setText(i18n.t("verification_ok"))
             self.status_label.setStyleSheet("color: #28a745; font-size: 14px; padding: 5px; font-weight: bold;")
         else:
-            self.status_label.setText("Verification: FAILED ✗")
+            self.status_label.setText(i18n.t("verification_fail"))
             self.status_label.setStyleSheet("color: #ff6b6b; font-size: 14px; padding: 5px; font-weight: bold;")

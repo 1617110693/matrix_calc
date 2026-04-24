@@ -60,7 +60,7 @@ def char_poly(A: Matrix):
     if not A.is_square:
         raise ValueError("Matrix must be square for characteristic polynomial")
     lam = symbols('lambda')
-    return A.charpoly(lam)
+    return A.charpoly(lam).as_expr()
 
 
 def eigen_values(A: Matrix):

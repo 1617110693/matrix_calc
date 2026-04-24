@@ -7,11 +7,16 @@ import os
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend for PyQt6
 
+# Configure LaTeX preamble for amsmath support
+matplotlib.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}\usepackage{amsfonts}'
+
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from PyQt6.QtWidgets import QScrollArea, QWidget, QVBoxLayout, QLabel
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
+
+from ui.i18n import i18n
 
 
 # LaTeX preamble for proper mathematical rendering
@@ -97,7 +102,10 @@ class LatexRenderWidget(QScrollArea):
 
         # Build full LaTeX string
         if title:
-            full_latex = rf"{title} \, : \, {latex_str}"
+            if title.endswith('= '):
+                full_latex = rf"{title}{latex_str}"
+            else:
+                full_latex = rf"{title} \, : \, {latex_str}"
         else:
             full_latex = latex_str
 
@@ -107,7 +115,7 @@ class LatexRenderWidget(QScrollArea):
                     ha='center', va='center',
                     color=text_color,
                     transform=ax.transAxes,
-                    usetex=False,  # Use Matplotlib's mathtext for better PyQt6 compatibility
+                    usetex=True,  # Use LaTeX for proper matrix rendering
                     wrap=True)
 
             # Adjust figure size based on content
@@ -124,23 +132,21 @@ class LatexRenderWidget(QScrollArea):
         """Clear the render area."""
         self.set_latex(r"\text{Result will appear here}")
 
-    def render_matrix(self, matrix, name: str = None):
+    def render_matrix(self, matrix, title: str = None):
         """
         Render a SymPy matrix with proper LaTeX formatting.
 
         Args:
             matrix: SymPy Matrix object
-            name: Optional name for the matrix
+            title: Optional title for the matrix
         """
         from sympy import latex
 
-        # Generate LaTeX for matrix with parentheses
+        # Generate LaTeX for matrix - mode='plain' gives clean output with brackets
         matrix_latex = latex(matrix, mode='plain')
-        # Wrap in parentheses for display
-        matrix_latex = rf"\begin{{pmatrix}}{matrix_latex.replace(r'\begin{matrix}', '').replace(r'\end{matrix}', '')}\end{{pmatrix}}"
 
-        if name:
-            self.set_latex(matrix_latex, title=name)
+        if title:
+            self.set_latex(matrix_latex, title=title)
         else:
             self.set_latex(matrix_latex)
 
@@ -157,19 +163,18 @@ class LatexRenderWidget(QScrollArea):
         """
         from sympy import latex
 
-        # Generate LaTeX for matrices
+        # Generate LaTeX for matrices - mode='plain' gives clean output
         def matrix_to_latex(m):
-            m_latex = latex(m, mode='plain')
-            return rf"\begin{{pmatrix}}{m_latex.replace(r'\begin{matrix}', '').replace(r'\end{matrix}', '')}\end{{pmatrix}}"
+            return latex(m, mode='plain')
 
         A_latex = matrix_to_latex(A)
         B_latex = matrix_to_latex(B)
         result_latex = matrix_to_latex(result)
 
         if op_name:
-            full_latex = rf"{A_latex} \={operation} \= {B_latex} \= \boxed{{{result_latex}}}"
+            full_latex = rf"{A_latex} \ {operation} \ {B_latex} \ = \ {result_latex}"
         else:
-            full_latex = rf"{A_latex} \ {operation} \ {B_latex} \= \boxed{{{result_latex}}}"
+            full_latex = rf"{A_latex} \ {operation} \ {B_latex} \ = \ {result_latex}"
 
         self.set_latex(full_latex, op_name)
 
@@ -188,8 +193,7 @@ class LatexRenderWidget(QScrollArea):
         from sympy import latex
 
         def matrix_to_latex(m):
-            m_latex = latex(m, mode='plain')
-            return rf"\begin{{pmatrix}}{m_latex.replace(r'\begin{matrix}', '').replace(r'\end{matrix}', '')}\end{{pmatrix}}"
+            return latex(m, mode='plain')
 
         A_latex = matrix_to_latex(A)
         J_latex = matrix_to_latex(J)
@@ -199,17 +203,15 @@ class LatexRenderWidget(QScrollArea):
         # Verification status
         if valid:
             verify_status = r"\quad \checkmark \text{ Verified: } A = PJP^{-1}"
-            verify_color = r"\text{\color{green} }"
         else:
             verify_status = rf"\quad \times \text{{ Verification Failed }}"
-            verify_color = r"\text{\color{red} }"
 
         full_latex = (
             rf"A = {A_latex} \\ "
             rf"J = {J_latex} \\ "
             rf"P = {P_latex} \\ "
             rf"P^{{-1}} = {P_inv_latex} \\ "
-            rf"{verify_color}{verify_status}"
+            rf"{verify_status}"
         )
 
         self.set_latex(full_latex)
@@ -227,8 +229,7 @@ class LatexRenderWidget(QScrollArea):
         from sympy import latex, simplify
 
         def matrix_to_latex(m):
-            m_latex = latex(m, mode='plain')
-            return rf"\begin{{pmatrix}}{m_latex.replace(r'\begin{matrix}', '').replace(r'\end{matrix}', '')}\end{{pmatrix}}"
+            return latex(m, mode='plain')
 
         A_latex = matrix_to_latex(A)
 
