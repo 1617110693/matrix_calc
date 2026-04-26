@@ -17,12 +17,12 @@ import sys
 import os
 
 # Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
 
-from ui.main_window import MainWindow
+from matrix_calculator.ui.main_window import MainWindow
 
 
 def main():

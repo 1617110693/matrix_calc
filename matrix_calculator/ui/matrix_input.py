@@ -15,7 +15,7 @@ from sympy import Matrix
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from core.parser import parse_expression, matrix_from_strings
+from matrix_calculator.core.parser import parse_expression, matrix_from_strings
 from ui.i18n import i18n
 
 

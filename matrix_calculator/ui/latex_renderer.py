@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import QScrollArea, QWidget, QVBoxLayout, QLabel
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
-from ui.i18n import i18n
+from matrix_calculator.ui.i18n import i18n
 
 
 # LaTeX preamble for proper mathematical rendering

@@ -18,15 +18,15 @@ from PyQt6.QtGui import QFont, QAction, QActionGroup
 
 from sympy import Matrix, simplify
 
-from ui.matrix_input import MatrixInputWidget, DualMatrixInput
-from ui.latex_renderer import LatexRenderWidget
-from ui.i18n import i18n
-from core.operations import (
+from matrix_calculator.ui.matrix_input import MatrixInputWidget, DualMatrixInput
+from matrix_calculator.ui.latex_renderer import LatexRenderWidget
+from matrix_calculator.ui.i18n import i18n
+from matrix_calculator.core.operations import (
     add, subtract, multiply, transpose, inverse,
     determinant, matrix_rank, trace, char_poly,
     eigen_values, eigen_values_only
 )
-from core.jordan import jordan_decomposition, verify_jordan
+from matrix_calculator.core.jordan import jordan_decomposition, verify_jordan
 
 
 class CalculationThread(QThread):
